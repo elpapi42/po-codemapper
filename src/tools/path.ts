@@ -11,11 +11,14 @@ export function registerPathTool(pi: ExtensionAPI): void {
 		name: "path",
 		label: "Path",
 		description:
-			"Find a detected static call path from one exact symbol to another using CodeMapper. Returns only a JSON array containing one call_path item, an empty array when no static path is detected, or a plain string error. `[]` does not prove runtime impossibility.",
-		promptSnippet: "path: Find a static CodeMapper call path from one symbol to another. Returns a JSON array.",
+			"Find the shortest detected static call path from one exact symbol to another using CodeMapper trace. Returns a JSON array with one call_path item when a path is found, `[]` when no static path is detected, or a plain string error. Use for questions like `main` -> `try_load_or_rebuild` or `handler` -> `send_response` after search has confirmed both exact symbol names. This v1 tool runs in the current cwd with no path scope or fuzzy lookup; `[]` does not prove runtime impossibility.",
+		promptSnippet: "path: Trace a static call chain from exact symbol A to exact symbol B in current cwd; returns one JSON call_path or [].",
 		promptGuidelines: [
-			"Use path when you need to know whether and how one known symbol can statically call another known symbol.",
-			"Use expand for the relationship radius around one symbol; use path only for a call chain between two symbols.",
+			"Use path when you know two exact symbols and need to see whether CodeMapper detects a static call chain between them.",
+			"Use search first to confirm exact path.from and path.to names; path does not do fuzzy matching in this extension.",
+			"Use expand for the relationship radius around one symbol; use path only for a specific A-to-B chain.",
+			"Do not pass file paths, routes, docs headings, or natural-language questions to path.from or path.to.",
+			"Treat [] from path as 'no static path detected', not proof that runtime/framework/dynamic code cannot connect the symbols.",
 		],
 		parameters: PathParams,
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {

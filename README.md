@@ -29,19 +29,27 @@ If Pi cannot see your shell `PATH`, either install `cm` at `~/.local/bin/cm` or 
 
 ## Install and load in Pi
 
-For one-session testing, run Pi with the local package as an extension:
+For normal use, install the package from GitHub over SSH:
+
+```bash
+pi install git:git@github.com:elpapi42/po-codemapper.git
+```
+
+This requires SSH access to `github.com:elpapi42/po-codemapper.git`. Pi will clone the package, run `npm install`, and load the extension declared in `package.json`.
+
+To try the remote package for one session without writing it to Pi settings, use:
+
+```bash
+pi -e git:git@github.com:elpapi42/po-codemapper.git
+```
+
+For local development from a checkout, run Pi with the local package as an extension:
 
 ```bash
 pi -e /home/whitman/pi-codemapper
 ```
 
-For normal use, install the local package into Pi settings:
-
-```bash
-pi install /home/whitman/pi-codemapper
-```
-
-Then restart Pi or use `/reload` if Pi is already running. Confirm the package is present with:
+After installing, restart Pi or use `/reload` if Pi is already running. Confirm the package is present with:
 
 ```bash
 pi list
@@ -238,7 +246,7 @@ The parser tests cover representative `cm --format ai` outputs for stats, map, q
 Use `CODEMAPPER_BIN` when `cm` is not on Pi’s runtime `PATH` or when you want a specific build:
 
 ```bash
-CODEMAPPER_BIN=/home/whitman/.local/bin/cm pi -e /home/whitman/pi-codemapper
+CODEMAPPER_BIN=/home/whitman/.local/bin/cm pi -e git:git@github.com:elpapi42/po-codemapper.git
 ```
 
 The extension sets `NO_COLOR=1` and `TERM=dumb` when invoking `cm`, uses argument arrays instead of shell-interpolated commands, and runs commands in the current Pi session working directory.
@@ -257,7 +265,7 @@ The extension sets `NO_COLOR=1` and `TERM=dumb` when invoking `cm`, uses argumen
 
 `CodeMapper is unavailable because the cm command was not found.` Ensure `cm --help` works, install it at `~/.local/bin/cm`, or set `CODEMAPPER_BIN=/absolute/path/to/cm` before starting Pi.
 
-Tool not visible in Pi: restart Pi, run `/reload`, and confirm the package is installed with `pi list`. For a quick test, run `pi -e /home/whitman/pi-codemapper`.
+Tool not visible in Pi: restart Pi, run `/reload`, and confirm the package is installed with `pi list`. For a quick remote test, run `pi -e git:git@github.com:elpapi42/po-codemapper.git`; for local development, run `pi -e /home/whitman/pi-codemapper`.
 
 `search` behaves like a different tool: another extension probably registered `search`. Disable the other extension, change load order, or rename one of the tools in its extension code.
 

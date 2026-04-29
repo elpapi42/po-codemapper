@@ -11,11 +11,13 @@ export function registerOutlineTool(pi: ExtensionAPI): void {
 		name: "outline",
 		label: "Outline",
 		description:
-			"Outline one known file with CodeMapper. Returns only a JSON array of exact file and symbol items for code files, or file and doc_section items for Markdown files. Use outline after search/map identifies a file and before reading the full file.",
-		promptSnippet: "outline: Outline one file's symbols or Markdown sections with CodeMapper. Returns a JSON array.",
+			"Outline one known file with CodeMapper after map/search has identified it. For code files, returns file metadata plus symbols with names, types, line ranges, signatures, and exported flags when available. For Markdown files, returns h1-h3 heading sections with line counts. Use before reading a full file to choose targeted ranges; this is not repo-wide symbol search.",
+		promptSnippet: "outline: Show one file's code symbols or Markdown h1-h3 sections before targeted reads; returns JSON items.",
 		promptGuidelines: [
-			"Use outline when you have a file path and need its symbols/headings before reading the file contents.",
-			"Do not use outline for symbol lookup; use search for locating symbols and expand for symbol relationships.",
+			"Use outline when you already have a specific file path from map/search and need its structure before reading content.",
+			"For code files, outline returns symbol names/types/line ranges/signatures; for Markdown, outline returns section headings and sizes.",
+			"Use search, not outline, when you need to locate an unknown symbol, route, or docs heading across a directory/repo.",
+			"Outline takes a file path only; do not pass a directory to outline.file.",
 		],
 		parameters: OutlineParams,
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {

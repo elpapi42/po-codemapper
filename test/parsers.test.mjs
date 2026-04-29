@@ -21,15 +21,26 @@ test("path normalization strips @ only for paths, not symbols or queries", () =>
 });
 
 test("parseStatsOutput parses compact stats", () => {
-  const items = parseStatsOutput(`[STATS]\nLANGS: markdown:1 rust:28\nSYMS: f:222 c:79 m:243 e:80 s:11 h:33 cb:13 ep:0\nTOTALS: files:29 syms:681 bytes:646025`, ".");
+  const items = parseStatsOutput(`[STATS]\nLANGS: markdown:1 rust:28\nSYMS: f:222 c:79 m:243 e:80 s:11 h:33 cb:13 ep:0 if:2 ty:1\nTOTALS: files:29 syms:684 bytes:646025`, ".");
   assert.deepEqual(items, [
     {
       kind: "stats",
       path: ".",
       filesByLanguage: { markdown: 1, rust: 28 },
-      symbolsByType: { function: 222, class: 79, method: 243, enum: 80, static: 11, heading: 33, code_block: 13, endpoint: 0 },
+      symbolsByType: {
+        function: 222,
+        class: 79,
+        method: 243,
+        enum: 80,
+        static: 11,
+        heading: 33,
+        code_block: 13,
+        endpoint: 0,
+        interface: 2,
+        type: 1,
+      },
       totalFiles: 29,
-      totalSymbols: 681,
+      totalSymbols: 684,
       totalBytes: 646025,
     },
   ]);
@@ -43,8 +54,8 @@ test("parseMapOutput parses level 2 files", () => {
   ]);
 });
 
-test("parseQueryOutput handles exact symbols, exported flag, headings, endpoints, and multiline signatures", () => {
-  const stdout = `[RESULTS:4]\nCacheManager|c|./src/cache.rs|83-83|exp\nsave_internal|m|./src/cache.rs|329-393|sig:(\n        index: &CodeIndex,\n        root: &Path,\n    )\nRoot > Caching|h|./README.md|148-149|sig:h2 (##)\nGET /v1/orders|ep|./docs/api.md|42-42`;
+test("parseQueryOutput handles exact symbols, exported flag, headings, endpoints, interfaces, types, and multiline signatures", () => {
+  const stdout = `[RESULTS:6]\nCacheManager|c|./src/cache.rs|83-83|exp\nsave_internal|m|./src/cache.rs|329-393|sig:(\n        index: &CodeIndex,\n        root: &Path,\n    )\nCacheOptions|if|./src/types.ts|12-18|exp\nUserId|ty|./src/types.ts|20-20|sig:type UserId = string\nRoot > Caching|h|./README.md|148-149|sig:h2 (##)\nGET /v1/orders|ep|./docs/api.md|42-42`;
   assert.deepEqual(parseQueryOutput(stdout), [
     { kind: "symbol", name: "CacheManager", symbolType: "class", path: "./src/cache.rs", lines: [83, 83], exported: true },
     {
@@ -54,6 +65,15 @@ test("parseQueryOutput handles exact symbols, exported flag, headings, endpoints
       path: "./src/cache.rs",
       lines: [329, 393],
       signature: "(\n        index: &CodeIndex,\n        root: &Path,\n    )",
+    },
+    { kind: "symbol", name: "CacheOptions", symbolType: "interface", path: "./src/types.ts", lines: [12, 18], exported: true },
+    {
+      kind: "symbol",
+      name: "UserId",
+      symbolType: "type",
+      path: "./src/types.ts",
+      lines: [20, 20],
+      signature: "type UserId = string",
     },
     { kind: "doc_section", path: "./README.md", heading: "Root > Caching", level: 2, line: 148 },
     { kind: "endpoint", name: "GET /v1/orders", path: "./docs/api.md", method: "GET", route: "/v1/orders", line: 42 },

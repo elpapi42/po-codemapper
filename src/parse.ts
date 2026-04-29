@@ -24,6 +24,8 @@ const SYMBOL_TYPE_NAMES: Record<string, string> = {
 	h: "heading",
 	cb: "code_block",
 	ep: "endpoint",
+	if: "interface",
+	ty: "type",
 };
 
 export function symbolTypeName(code: string): string {
