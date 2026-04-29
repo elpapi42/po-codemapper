@@ -32,7 +32,7 @@ If Pi cannot see your shell `PATH`, either install `cm` at `~/.local/bin/cm` or 
 For normal use, install the package from GitHub over SSH:
 
 ```bash
-pi install git:git@github.com:elpapi42/po-codemapper.git
+pi install git:git@github.com:elpapi42/pi-codemapper.git
 ```
 
 This requires SSH access to `github.com:elpapi42/po-codemapper.git`. Pi will clone the package, run `npm install`, and load the extension declared in `package.json`.
@@ -40,7 +40,7 @@ This requires SSH access to `github.com:elpapi42/po-codemapper.git`. Pi will clo
 To try the remote package for one session without writing it to Pi settings, use:
 
 ```bash
-pi -e git:git@github.com:elpapi42/po-codemapper.git
+pi -e git:git@github.com:elpapi42/pi-codemapper.git
 ```
 
 For local development from a checkout, run Pi with the local package as an extension:
