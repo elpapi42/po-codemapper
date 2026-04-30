@@ -255,7 +255,7 @@ The extension sets `NO_COLOR=1` and `TERM=dumb` when invoking `cm`, uses argumen
 
 - v1 parses `cm --format ai` because CodeMapper does not yet expose JSON output for these commands. The parser is conservative, but a future `cm --format json` would be more robust.
 - CodeMapper commands are read-only from the product perspective, but they can write or update `.codemapper` cache files in the target repo.
-- Successful JSON output is capped to protect the model context. If output is too large, the tool returns `CodeMapper output too large; narrow with path or query.`
+- Successful JSON output is capped at 1000KB to protect the model context. If output is too large, the tool returns `CodeMapper output too large; narrow with path or query.`
 - `search` is CodeMapper fuzzy/case-insensitive search by default, not semantic embedding search. Use `exact: true` for known exact names.
 - `expand` and `path` operate on exact symbols in the current working directory and intentionally do not expose a `path` parameter in v1.
 - Static call graph results are heuristic. Dynamic dispatch, reflection, framework routing, dependency injection, macros, generated code, and string-based calls may not appear.
