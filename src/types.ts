@@ -30,6 +30,21 @@ export interface FileItem {
 	symbolCount?: number;
 }
 
+export interface DirectoryItem {
+	kind: "directory";
+	path: string;
+	fileCount: number;
+	sizeBytes: number;
+	filesByLanguage: Record<string, number>;
+}
+
+export interface NoticeItem {
+	kind: "notice";
+	code: string;
+	message: string;
+	suggestedAction?: string;
+}
+
 export interface SymbolItem {
 	kind: "symbol";
 	name: string;
@@ -58,7 +73,7 @@ export interface EndpointItem {
 	line: number;
 }
 
-export type MapItem = StatsItem | FileItem;
+export type MapItem = StatsItem | FileItem | DirectoryItem | NoticeItem;
 export type SearchItem = SymbolItem | DocSectionItem | EndpointItem;
 export type OutlineItem = FileItem | SymbolItem | DocSectionItem;
 

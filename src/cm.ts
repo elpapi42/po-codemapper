@@ -1,9 +1,9 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { MAX_BUFFER_BYTES } from "./constants.js";
+import { MAX_BUFFER_BYTES, MAX_ERROR_OUTPUT_BYTES } from "./constants.js";
 import { combineOutputs, truncateText } from "./output.js";
 import type { RunOptions, RunResult } from "./types.js";
 
@@ -102,6 +102,114 @@ export async function runCm(cwd: string, args: string[], options: RunOptions): P
 	}
 }
 
+export async function runCmStreamingLines(
+	cwd: string,
+	args: string[],
+	options: RunOptions,
+	onStdoutLine: (line: string) => void,
+): Promise<RunResult> {
+	const bin = resolveCmBinary();
+	const command = formatCommand(args, bin);
+
+	return new Promise((resolve, reject) => {
+		let stdoutTail = "";
+		let stderrTail = "";
+		let stdoutRemainder = "";
+		let settled = false;
+		let timedOut = false;
+
+		const child = spawn(bin, args, {
+			cwd,
+			signal: options.signal,
+			env: { ...process.env, NO_COLOR: "1", TERM: "dumb" },
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+
+		const timeout = setTimeout(() => {
+			timedOut = true;
+			child.kill("SIGTERM");
+		}, options.timeoutMs);
+
+		const finish = (callback: () => void) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timeout);
+			callback();
+		};
+
+		child.stdout.setEncoding("utf8");
+		child.stdout.on("data", (chunk: string) => {
+			stdoutTail = appendTail(stdoutTail, chunk);
+			const text = stdoutRemainder + chunk;
+			const lines = text.split(/\r?\n/);
+			stdoutRemainder = lines.pop() ?? "";
+			for (const line of lines) onStdoutLine(line);
+		});
+
+		child.stderr.setEncoding("utf8");
+		child.stderr.on("data", (chunk: string) => {
+			stderrTail = appendTail(stderrTail, chunk);
+		});
+
+		child.on("error", (error: NodeJS.ErrnoException) => {
+			const cancelled = isRawCancellation(error, options.signal);
+			finish(() => {
+				reject(
+					new CmError(renderRawFailure({ ...error, stdout: stdoutTail, stderr: stderrTail || error.message }, command), {
+						command,
+						cwd,
+						stdout: stdoutTail,
+						stderr: stderrTail || error.message,
+						code: error.code,
+						signal: undefined,
+						killed: timedOut,
+						timedOut: timedOut && !cancelled,
+						cancelled,
+						causeName: error.name,
+					}),
+				);
+			});
+		});
+
+		child.on("close", (code, signal) => {
+			if (settled) return;
+			if (stdoutRemainder) {
+				onStdoutLine(stdoutRemainder);
+				stdoutRemainder = "";
+			}
+			finish(() => {
+				if (code === 0) {
+					resolve({ command, cwd, stdout: "", stderr: stderrTail });
+					return;
+				}
+
+				const cancelled = Boolean(options.signal?.aborted);
+				const raw = {
+					code: typeof code === "number" ? code : undefined,
+					name: cancelled ? "AbortError" : undefined,
+					stdout: stdoutTail,
+					stderr: stderrTail || (timedOut ? "Command timed out." : signal ? `Terminated by ${signal}.` : ""),
+					message: stderrTail || (timedOut ? "Command timed out." : signal ? `Terminated by ${signal}.` : "Unknown cm error."),
+				};
+				reject(
+					new CmError(renderRawFailure(raw, command), {
+						command,
+						cwd,
+						stdout: stdoutTail,
+						stderr: raw.stderr,
+						code: raw.code,
+						signal,
+						killed: timedOut,
+						timedOut: timedOut && !cancelled,
+						cancelled,
+						causeName: raw.name,
+					}),
+				);
+			});
+		});
+	});
+}
+
 export function renderToolFailure(error: unknown): string {
 	if (error instanceof CmError) return `CodeMapper failed: ${error.message}`;
 	if (error instanceof Error) return `CodeMapper failed: ${error.message}`;
@@ -145,4 +253,10 @@ export function shellQuote(value: string): string {
 
 export function formatCommand(args: string[], bin = "cm"): string {
 	return [bin, ...args].map(shellQuote).join(" ");
+}
+
+function appendTail(current: string, chunk: string): string {
+	const combined = current + chunk;
+	if (Buffer.byteLength(combined, "utf8") <= MAX_ERROR_OUTPUT_BYTES) return combined;
+	return combined.slice(-MAX_ERROR_OUTPUT_BYTES);
 }

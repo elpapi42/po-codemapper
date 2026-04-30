@@ -91,7 +91,10 @@ Execution details:
 - Run `stats` first, then `map`.
 - Parse `stats` into one `stats` item.
 - Parse `map --level 2` into `file` items.
-- If map output is too large to safely return, return a string error asking for a narrower path instead of silently truncating.
+- If the full `stats + file` JSON array fits the model-output cap, return it unchanged.
+- If the full level-2 file map is too large to safely return, return an optimized JSON array instead of a plain string error: `stats` item(s), a `notice` item explaining that the response was optimized because the file map was too large, and top-level `directory` items aggregated from the parsed file items.
+- The optimized notice must tell the agent to call `map` again with a smaller `path` from the returned directory items when it needs file-level mapping.
+- If the optimized directory grouping is still too large, include as many largest directory groups as fit plus a second `notice` item explaining that directory groups were truncated.
 
 Returns:
 
@@ -112,6 +115,19 @@ type MapItem =
       language?: string;
       sizeBytes?: number;
       symbolCount?: number;
+    }
+  | {
+      kind: "directory";
+      path: string;
+      fileCount: number;
+      sizeBytes: number;
+      filesByLanguage: Record<string, number>;
+    }
+  | {
+      kind: "notice";
+      code: string;
+      message: string;
+      suggestedAction?: string;
     };
 ```
 

@@ -82,7 +82,7 @@ cm stats <path> --format ai
 cm map <path> --level 2 --format ai
 ```
 
-Returns a JSON array containing one `stats` item plus `file` items.
+Returns a JSON array containing one `stats` item plus `file` items when the level-2 file map fits. If the full file map is too large, the tool returns `stats`, a `notice` item with code `map_output_optimized`, and compact `directory` items. The notice tells the agent to call `map` again with a smaller `path` from the returned directory items when it needs file-level mapping.
 
 ### `search({ query, path?, exact? })`
 
@@ -158,6 +158,8 @@ Pi tool execution returns Pi’s normal tool result object internally, but the m
 - a top-level JSON array string on success,
 - `[]` for successful no-result cases,
 - a plain string error on failure.
+
+For `map`, very large level-2 file maps are still successful JSON responses: the tool returns `stats`, a `notice`, and aggregated `directory` items instead of failing with an output-size error.
 
 There is no wrapper object, no `findings` field, no `commandsRun`, and no relevance score.
 
@@ -255,7 +257,7 @@ The extension sets `NO_COLOR=1` and `TERM=dumb` when invoking `cm`, uses argumen
 
 - v1 parses `cm --format ai` because CodeMapper does not yet expose JSON output for these commands. The parser is conservative, but a future `cm --format json` would be more robust.
 - CodeMapper commands are read-only from the product perspective, but they can write or update `.codemapper` cache files in the target repo.
-- Successful JSON output is capped at 1000KB to protect the model context. If output is too large, the tool returns `CodeMapper output too large; narrow with path or query.`
+- Successful JSON output is capped at 1000KB to protect the model context. If output is too large, most tools return `CodeMapper output too large; narrow with path or query.` The `map` tool first tries an optimized directory-group response so broad repo maps can still guide the agent toward smaller paths.
 - `search` is CodeMapper fuzzy/case-insensitive search by default, not semantic embedding search. Use `exact: true` for known exact names.
 - `expand` and `path` operate on exact symbols in the current working directory and intentionally do not expose a `path` parameter in v1.
 - Static call graph results are heuristic. Dynamic dispatch, reflection, framework routing, dependency injection, macros, generated code, and string-based calls may not appear.

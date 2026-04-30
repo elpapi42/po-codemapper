@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { Buffer } from "node:buffer";
 import test from "node:test";
 import {
   parseCalleesOutput,
@@ -13,6 +14,7 @@ import {
   parseTraceOutput,
 } from "../src/parse.ts";
 import { normalizeOptionalPath, normalizeRequiredPath, normalizeRequiredString } from "../src/paths.ts";
+import { aggregateDirectoryItems, buildMapResult } from "../src/mapFallback.ts";
 
 test("path normalization strips @ only for paths, not symbols or queries", () => {
   assert.equal(normalizeOptionalPath("@src/cache.rs"), "src/cache.rs");
@@ -52,6 +54,107 @@ test("parseMapOutput parses level 2 files", () => {
     { kind: "file", path: "./src/blame.rs", language: "rust", sizeBytes: 7799 },
     { kind: "file", path: "./README.md", language: "markdown", sizeBytes: 9872 },
   ]);
+});
+
+test("aggregateDirectoryItems groups by top-level path relative to the mapped path", () => {
+  const files = [
+    { kind: "file", path: "./src/tools/map.ts", language: "typescript", sizeBytes: 10 },
+    { kind: "file", path: "./src/index.ts", language: "typescript", sizeBytes: 5 },
+    { kind: "file", path: "./src/parse.ts", language: "typescript", sizeBytes: 11 },
+    { kind: "file", path: "./README.md", language: "markdown", sizeBytes: 3 },
+    { kind: "file", path: "./docs/api.md", language: "markdown", sizeBytes: 7 },
+  ];
+
+  assert.deepEqual(aggregateDirectoryItems(files, "."), [
+    { kind: "directory", path: "src", fileCount: 3, sizeBytes: 26, filesByLanguage: { typescript: 3 } },
+    { kind: "directory", path: "docs", fileCount: 1, sizeBytes: 7, filesByLanguage: { markdown: 1 } },
+    { kind: "directory", path: ".", fileCount: 1, sizeBytes: 3, filesByLanguage: { markdown: 1 } },
+  ]);
+
+  assert.deepEqual(aggregateDirectoryItems(files.slice(0, 3), "src"), [
+    { kind: "directory", path: "src", fileCount: 2, sizeBytes: 16, filesByLanguage: { typescript: 2 } },
+    { kind: "directory", path: "src/tools", fileCount: 1, sizeBytes: 10, filesByLanguage: { typescript: 1 } },
+  ]);
+});
+
+test("buildMapResult returns file items when they fit and directory fallback when too large", () => {
+  const stats = [
+    {
+      kind: "stats",
+      path: ".",
+      filesByLanguage: { typescript: 80 },
+      symbolsByType: { function: 80 },
+      totalFiles: 80,
+      totalSymbols: 80,
+      totalBytes: 8000,
+    },
+  ];
+  const files = Array.from({ length: 80 }, (_, index) => ({
+    kind: "file",
+    path: `./packages/api/src/feature-${index}/very-long-file-name-${index}.ts`,
+    language: "typescript",
+    sizeBytes: 100,
+  }));
+
+  const full = buildMapResult(stats, files, ".", 1_000_000);
+  assert.equal(full.filter((item) => item.kind === "file").length, 80);
+
+  const optimized = buildMapResult(stats, files, ".", 5000);
+  assert.equal(optimized.some((item) => item.kind === "file"), false);
+  assert.equal(optimized.some((item) => item.kind === "notice" && item.code === "map_output_optimized"), true);
+  assert.deepEqual(optimized.filter((item) => item.kind === "directory"), [
+    { kind: "directory", path: "packages", fileCount: 80, sizeBytes: 8000, filesByLanguage: { typescript: 80 } },
+  ]);
+  assert.ok(Buffer.byteLength(JSON.stringify(optimized), "utf8") <= 5000);
+});
+
+test("buildMapResult truncates directory fallback if directory groups are still too large", () => {
+  const stats = [
+    {
+      kind: "stats",
+      path: ".",
+      filesByLanguage: { typescript: 40 },
+      symbolsByType: { function: 40 },
+      totalFiles: 40,
+      totalSymbols: 40,
+      totalBytes: 4000,
+    },
+  ];
+  const files = Array.from({ length: 40 }, (_, index) => ({
+    kind: "file",
+    path: `./very-long-directory-name-${String(index).padStart(2, "0")}/index.ts`,
+    language: "typescript",
+    sizeBytes: 100,
+  }));
+
+  const maxBytes = 1800;
+  const optimized = buildMapResult(stats, files, ".", maxBytes);
+  const directoryCount = optimized.filter((item) => item.kind === "directory").length;
+  assert.equal(optimized.some((item) => item.kind === "file"), false);
+  assert.equal(optimized.some((item) => item.kind === "notice" && item.code === "map_output_optimized"), true);
+  assert.equal(optimized.some((item) => item.kind === "notice" && item.code === "map_directory_groups_truncated"), true);
+  assert.ok(directoryCount > 0);
+  assert.ok(directoryCount < 40);
+  assert.ok(Buffer.byteLength(JSON.stringify(optimized), "utf8") <= maxBytes);
+});
+
+test("buildMapResult remains cap-safe for tiny caps", () => {
+  const stats = [
+    {
+      kind: "stats",
+      path: ".",
+      filesByLanguage: { typescript: 1 },
+      symbolsByType: { function: 1 },
+      totalFiles: 1,
+      totalSymbols: 1,
+      totalBytes: 100,
+    },
+  ];
+  const files = [{ kind: "file", path: "./src/index.ts", language: "typescript", sizeBytes: 100 }];
+
+  assert.throws(() => buildMapResult(stats, files, ".", 1), /maxBytes must be at least 2/);
+  assert.deepEqual(buildMapResult(stats, files, ".", 2), []);
+  assert.ok(Buffer.byteLength(JSON.stringify(buildMapResult(stats, files, ".", 2)), "utf8") <= 2);
 });
 
 test("parseQueryOutput handles exact symbols, exported flag, headings, endpoints, interfaces, types, and multiline signatures", () => {
