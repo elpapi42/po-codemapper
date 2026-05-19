@@ -24,17 +24,16 @@ export function renderCodeMapperCall(name: string, formatArgs?: (args: any) => s
 export function renderCodeMapperResult(summary: string) {
 	return (result: ToolResult, { expanded, isPartial }: RenderOptions, theme: Theme) => {
 		if (isPartial) return new Text(theme.fg("warning", "Running CodeMapper..."), 0, 0);
+		if (!expanded) return new Text("", 0, 0);
 
 		const content = result.content?.find((entry) => entry.type === "text")?.text ?? "";
 		const value = result.details?.value;
 		let text = theme.fg("success", summarize(value, content, summary));
 
-		if (expanded) {
-			const lines = content.split("\n").slice(0, 80);
-			for (const line of lines) text += `\n${theme.fg("dim", line)}`;
-			const totalLines = content ? content.split("\n").length : 0;
-			if (totalLines > lines.length) text += `\n${theme.fg("muted", "... (output truncated in UI)")}`;
-		}
+		const lines = content.split("\n").slice(0, 80);
+		for (const line of lines) text += `\n${theme.fg("dim", line)}`;
+		const totalLines = content ? content.split("\n").length : 0;
+		if (totalLines > lines.length) text += `\n${theme.fg("muted", "... (output truncated in UI)")}`;
 
 		return new Text(text, 0, 0);
 	};
