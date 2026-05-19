@@ -5,6 +5,7 @@ import { normalizeOptionalPath, normalizeRequiredString } from "../paths.js";
 import { parseQueryOutput } from "../parse.js";
 import { SearchParams } from "../params/search.js";
 import { toToolResult } from "../output.js";
+import { renderCodeMapperCall, renderCodeMapperResult } from "../render.js";
 
 export function registerSearchTool(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -22,6 +23,8 @@ export function registerSearchTool(pi: ExtensionAPI): void {
 			"Search returns at most 50 CodeMapper results in this extension; narrow search.query or search.path if results are noisy or capped.",
 		],
 		parameters: SearchParams,
+		renderCall: renderCodeMapperCall("search", (args) => args.query),
+		renderResult: renderCodeMapperResult("Search complete"),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const query = normalizeRequiredString(params.query, "search.query");
 			if (typeof query !== "string") return toToolResult(query.error);

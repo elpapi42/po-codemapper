@@ -5,6 +5,7 @@ import { isMarkdownFile, normalizeRequiredPath } from "../paths.js";
 import { parseInspectOutput, parseMarkdownTreeOutput } from "../parse.js";
 import { OutlineParams } from "../params/outline.js";
 import { toToolResult } from "../output.js";
+import { renderCodeMapperCall, renderCodeMapperResult } from "../render.js";
 
 export function registerOutlineTool(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -20,6 +21,8 @@ export function registerOutlineTool(pi: ExtensionAPI): void {
 			"Outline takes a file path only; do not pass a directory to outline.file.",
 		],
 		parameters: OutlineParams,
+		renderCall: renderCodeMapperCall("outline", (args) => args.file),
+		renderResult: renderCodeMapperResult("Outline complete"),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const file = normalizeRequiredPath(params.file, "outline.file");
 			if (typeof file !== "string") return toToolResult(file.error);

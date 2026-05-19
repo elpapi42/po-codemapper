@@ -5,6 +5,7 @@ import { normalizeRequiredString } from "../paths.js";
 import { parseTraceOutput } from "../parse.js";
 import { PathParams } from "../params/path.js";
 import { toToolResult } from "../output.js";
+import { renderCodeMapperCall, renderCodeMapperResult } from "../render.js";
 
 export function registerPathTool(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -21,6 +22,8 @@ export function registerPathTool(pi: ExtensionAPI): void {
 			"Treat [] from path as 'no static path detected', not proof that runtime/framework/dynamic code cannot connect the symbols.",
 		],
 		parameters: PathParams,
+		renderCall: renderCodeMapperCall("path", (args) => `${args.from} -> ${args.to}`),
+		renderResult: renderCodeMapperResult("Path complete"),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const from = normalizeRequiredString(params.from, "path.from");
 			if (typeof from !== "string") return toToolResult(from.error);

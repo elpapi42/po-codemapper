@@ -5,6 +5,7 @@ import { normalizeOptionalPath } from "../paths.js";
 import { parseStatsOutput } from "../parse.js";
 import { MapParams } from "../params/map.js";
 import { toToolResult } from "../output.js";
+import { renderCodeMapperCall, renderCodeMapperResult } from "../render.js";
 import { buildMapResult } from "../mapFallback.js";
 import type { FileItem } from "../types.js";
 
@@ -23,6 +24,8 @@ export function registerMapTool(pi: ExtensionAPI): void {
 			"Do not pass a file path to map; use outline.file for single-file structure.",
 		],
 		parameters: MapParams,
+		renderCall: renderCodeMapperCall("map", (args) => args.path ?? "."),
+		renderResult: renderCodeMapperResult("Map complete"),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const targetPath = normalizeOptionalPath(params.path, ".");
 			try {

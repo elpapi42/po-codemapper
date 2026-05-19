@@ -5,6 +5,7 @@ import { normalizeRequiredString } from "../paths.js";
 import { combineExpandItems, parseCalleesOutput, parseCallersOutput, parseDefinitionsOutput, parseTestsOutput } from "../parse.js";
 import { ExpandParams } from "../params/expand.js";
 import { toToolResult } from "../output.js";
+import { renderCodeMapperCall, renderCodeMapperResult } from "../render.js";
 
 export function registerExpandTool(pi: ExtensionAPI): void {
 	pi.registerTool({
@@ -22,6 +23,8 @@ export function registerExpandTool(pi: ExtensionAPI): void {
 			"Expand callees can include unresolved external/built-in calls, and test results are based on CodeMapper's supported test file/name/attribute conventions.",
 		],
 		parameters: ExpandParams,
+		renderCall: renderCodeMapperCall("expand", (args) => args.symbol),
+		renderResult: renderCodeMapperResult("Expand complete"),
 		async execute(_toolCallId, params, signal, _onUpdate, ctx) {
 			const symbol = normalizeRequiredString(params.symbol, "expand.symbol");
 			if (typeof symbol !== "string") return toToolResult(symbol.error);
